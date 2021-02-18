@@ -9,19 +9,30 @@
 
     <Button
         android:id="@+id/btn1"
-        android:text="短一点的音效"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:text="短一点的音效" />
+
+    <ProgressBar
+        android:id="@+id/pbMusic"
+        android:layout_width="match_parent"
+        android:layout_height="5dp"
+        style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+        android:background="@android:color/holo_red_light"
+        />
     <Button
         android:id="@+id/btn2"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content"
+        android:text="长音乐" />
+
     <Button
         android:id="@+id/btn3"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content" />
+
     <Button
         android:id="@+id/btn4"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
+        android:layout_height="wrap_content" />
 </LinearLayout>
