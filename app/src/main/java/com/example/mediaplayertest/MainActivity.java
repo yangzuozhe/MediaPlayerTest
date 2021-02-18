@@ -1,5 +1,7 @@
 package com.example.mediaplayertest;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -12,7 +14,14 @@ import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
     Button mBtn1;
@@ -28,11 +37,14 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        //findBy
         initView();
-        initSoundPool();
-        initMediaPlayer();
-    }
 
+        //初始化，短一些的音效
+        initSoundPool();
+        checkSP();
+
+    }
     private void initView() {
         mBtn1 = findViewById(R.id.btn1);
         mBtn2 = findViewById(R.id.btn2);
@@ -98,8 +110,27 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void checkSP() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
+        } else {
+            initMediaPlayer();
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        if (requestCode == 1) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                initMediaPlayer();
+            } else {
+                Toast.makeText(this, "你需要同意权限", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
     /**
-     * 播放长音频(本地)
+     * 播放长音频(获取手机存储的音乐)
      */
     private void initMediaPlayer() {
         //是否有挂载
@@ -107,7 +138,19 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         //获取本地的音乐，位置是，res/raw/long_music.mp3
-        mMediaPlayer = MediaPlayer.create(this, R.raw.long_music);
+//        mMediaPlayer = MediaPlayer.create(this, R.raw.long_music);
+        mMediaPlayer = new MediaPlayer();
+        //这里千万要注意，我们这里不可以使用   File file = new File(Environment.getExternalStorageDirectory()+"/Download","long_music.mp3");
+        //在 api29 以后我们只能访问 getExternalFilesDir 或者 getExternalCacheDir
+        File file = new File(getExternalFilesDir(null), "long_music.mp3");
+        try {
+            //这里要使用 setDataSource 方法添加音乐文件的位置
+            mMediaPlayer.setDataSource(file.getPath());
+            //这里做启动音乐文件的准备
+            mMediaPlayer.prepare();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         //首先准备一个 AudioAttributes 实例
         AudioAttributes attributes;
         //AudioAttributes 音频属性取代了 AudioManager 音频流
@@ -119,12 +162,14 @@ public class MainActivity extends AppCompatActivity {
                 .build();
         //设置音乐属性
         mMediaPlayer.setAudioAttributes(attributes);
-        mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-            @Override
-            public void onPrepared(MediaPlayer mp) {
-                setPosition();
-            }
-        });
+
+            mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+                @Override
+                public void onPrepared(MediaPlayer mp) {
+                    setPosition();
+                }
+            });
+
     }
 
     @Override

@@ -37,6 +37,7 @@ public class SurfaceViewActivity extends AppCompatActivity implements View.OnCli
     private void initSurfaceHolder() {
         mSurfaceHolder = mSfvShow.getHolder();
         mSurfaceHolder.addCallback(this);
+
     }
 
 
