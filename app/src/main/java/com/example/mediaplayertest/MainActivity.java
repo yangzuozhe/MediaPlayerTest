@@ -172,6 +172,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setStorageMusic() {
+        mMediaPlayer = new MediaPlayer();
         //这里千万要注意，我们这里不可以使用   File file = new File(Environment.getExternalStorageDirectory()+"/Download","long_music.mp3");
         //在 api29 以后我们只能访问 getExternalFilesDir 或者 getExternalCacheDir
         File file = new File(getExternalFilesDir(null), "long_music.mp3");
@@ -196,9 +197,9 @@ public class MainActivity extends AppCompatActivity {
         //Android studio 中的音乐文件
 //        setLocalMusic();
         //网络资源文件
-        setUrlMusic();
+//        setUrlMusic();
         //手机存储文件
-//        setStorageMusic();
+        setStorageMusic();
         //首先准备一个 AudioAttributes 实例
         AudioAttributes attributes;
         //AudioAttributes 音频属性取代了 AudioManager 音频流
