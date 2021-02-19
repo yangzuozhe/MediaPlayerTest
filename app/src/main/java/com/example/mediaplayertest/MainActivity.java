@@ -9,6 +9,7 @@ import android.media.SoundPool;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
@@ -20,7 +21,6 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 
 public class MainActivity extends AppCompatActivity {
@@ -28,10 +28,28 @@ public class MainActivity extends AppCompatActivity {
     Button mBtn2;
     Button mBtn3;
     Button mBtn4;
+    /**
+     * 短音效
+     */
     SoundPool mSoundPool;
-    MediaPlayer mMediaPlayer;
+    /**
+     * 本地的player
+     */
+    MediaPlayer mLocalMediaPlayer;
+    /**
+     * 网络资源的player
+     */
+    MediaPlayer mUrlMediaPlayer;
+    /**
+     * 本地音乐进度条
+     */
     ProgressBar mPbMusic;
+    /**
+     * 网络资源音乐进度条
+     */
+    ProgressBar mPbUrlMusic;
     int mMusic = 0;
+    boolean mIsStart = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,12 +61,15 @@ public class MainActivity extends AppCompatActivity {
         //初始化，短一些的音效
         initSoundPool();
         checkSP();
-
+        initUrlMediaPlayer();
     }
+
     private void initView() {
         mBtn1 = findViewById(R.id.btn1);
         mBtn2 = findViewById(R.id.btn2);
+        mBtn3 = findViewById(R.id.btn3);
         mPbMusic = findViewById(R.id.pbMusic);
+        mPbUrlMusic = findViewById(R.id.pbUrlMusic);
         //点击播放短的音频
         mBtn1.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -62,7 +83,21 @@ public class MainActivity extends AppCompatActivity {
         mBtn2.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                startMediaPlayer();
+                startLocalMediaPlayer();
+            }
+        });
+        //网络资源的歌曲
+        mBtn3.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mUrlMediaPlayer != null) {
+                    if (mUrlMediaPlayer.isPlaying()) {
+                        resetUrlMediaPlayer();
+                    }
+                    //准备资源
+                    mUrlMediaPlayer.prepareAsync();
+
+                }
             }
         });
     }
@@ -114,7 +149,7 @@ public class MainActivity extends AppCompatActivity {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
         } else {
-            initMediaPlayer();
+            initLocalMediaPlayer();
         }
     }
 
@@ -122,7 +157,7 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         if (requestCode == 1) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                initMediaPlayer();
+                initLocalMediaPlayer();
             } else {
                 Toast.makeText(this, "你需要同意权限", Toast.LENGTH_SHORT).show();
             }
@@ -132,22 +167,22 @@ public class MainActivity extends AppCompatActivity {
     /**
      * 播放长音频(获取手机存储的音乐)
      */
-    private void initMediaPlayer() {
+    private void initLocalMediaPlayer() {
         //是否有挂载
         if (!Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
             return;
         }
         //获取本地的音乐，位置是，res/raw/long_music.mp3
 //        mMediaPlayer = MediaPlayer.create(this, R.raw.long_music);
-        mMediaPlayer = new MediaPlayer();
+        mLocalMediaPlayer = new MediaPlayer();
         //这里千万要注意，我们这里不可以使用   File file = new File(Environment.getExternalStorageDirectory()+"/Download","long_music.mp3");
         //在 api29 以后我们只能访问 getExternalFilesDir 或者 getExternalCacheDir
         File file = new File(getExternalFilesDir(null), "long_music.mp3");
         try {
             //这里要使用 setDataSource 方法添加音乐文件的位置
-            mMediaPlayer.setDataSource(file.getPath());
+            mLocalMediaPlayer.setDataSource(file.getPath());
             //这里做启动音乐文件的准备
-            mMediaPlayer.prepare();
+            mLocalMediaPlayer.prepare();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -161,15 +196,68 @@ public class MainActivity extends AppCompatActivity {
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                 .build();
         //设置音乐属性
-        mMediaPlayer.setAudioAttributes(attributes);
+        mLocalMediaPlayer.setAudioAttributes(attributes);
 
-            mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-                @Override
-                public void onPrepared(MediaPlayer mp) {
-                    setPosition();
+        mLocalMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+            @Override
+            public void onPrepared(MediaPlayer mp) {
+                setPosition(mLocalMediaPlayer, mPbMusic);
+            }
+        });
+
+    }
+
+    /**
+     * 使用网络歌曲获取当前歌曲
+     */
+    private void initUrlMediaPlayer() {
+        if (!Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
+            return;
+        }
+        mUrlMediaPlayer = new MediaPlayer();
+        try {
+            mUrlMediaPlayer.setDataSource("http://fm111.img.xiaonei.com/tribe/20070613/10/52/A314269027058MUS.mp3");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        //首先准备一个 AudioAttributes 实例
+        AudioAttributes attributes;
+        //AudioAttributes 音频属性取代了 AudioManager 音频流
+        attributes = new AudioAttributes.Builder()
+                //设置描述音频信号的预期用途的属性
+                .setUsage(AudioAttributes.USAGE_MEDIA)
+                //设置描述音频信号(如语音)的内容类型的属性
+                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                .build();
+        //设置音乐属性
+        mUrlMediaPlayer.setAudioAttributes(attributes);
+        //网络流媒体的缓冲监听（只有当percent大于0的时候才可以播放）
+        mUrlMediaPlayer.setOnBufferingUpdateListener(new MediaPlayer.OnBufferingUpdateListener() {
+            @Override
+            public void onBufferingUpdate(MediaPlayer mp, int percent) {
+                Log.i("Demo", percent + "");
+                //当缓存进度值 percent 大于 0 时就可以播放音乐
+                //这个 percent 就相当于我们进度条的灰色条
+                if (percent > 0) {
+                    startUrlMediaPlayer();
                 }
-            });
-
+            }
+        });
+        //网络流媒体播放结束监听
+        mUrlMediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+            @Override
+            public void onCompletion(MediaPlayer mp) {
+                Toast.makeText(MainActivity.this, "歌曲播放结束", Toast.LENGTH_SHORT).show();
+            }
+        });
+        // 设置错误信息监听，这个其实看，下面的红色报错信息就可以了
+        mUrlMediaPlayer.setOnErrorListener(new MediaPlayer.OnErrorListener() {
+            @Override
+            public boolean onError(MediaPlayer mp, int what, int extra) {
+                Log.i("Error", "what：" + what + "\t extra:" + extra);
+                return false;
+            }
+        });
     }
 
     @Override
@@ -177,44 +265,82 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
         //最后要回收Pool中的资源
         mSoundPool.release();
-        stopMediaPlayer();
+        stopLocalMediaPlayer();
+        stopUrlMediaPlayer();
     }
 
     /**
-     * 释放音频资源
+     * 释放本地音频资源
      */
-    private void stopMediaPlayer() {
-        if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
-            mMediaPlayer.stop();
-            mMediaPlayer.release();
-            mMediaPlayer = null;
+    private void stopLocalMediaPlayer() {
+        if (mLocalMediaPlayer != null && mLocalMediaPlayer.isPlaying()) {
+            mLocalMediaPlayer.stop();
+            mLocalMediaPlayer.release();
+            mLocalMediaPlayer = null;
         }
     }
 
     /**
-     * 开始播放音乐
+     * 释放网络音频资源
      */
-    private void startMediaPlayer() {
-        if (mMediaPlayer.isPlaying()) {
+    private void stopUrlMediaPlayer() {
+        if (mUrlMediaPlayer != null && mUrlMediaPlayer.isPlaying()) {
+            mUrlMediaPlayer.stop();
+            mUrlMediaPlayer.release();
+            mUrlMediaPlayer = null;
+        }
+    }
+
+    /**
+     * 开始播放本地音乐
+     */
+    private void startLocalMediaPlayer() {
+        if (mLocalMediaPlayer.isPlaying()) {
             //如果正在播放了就重新播放
-            mMediaPlayer.seekTo(0);
+            mLocalMediaPlayer.seekTo(0);
         } else {
-            mMediaPlayer.start();
+            mLocalMediaPlayer.start();
+        }
+    }
+
+    /**
+     * 开始播放网络资源的音乐
+     */
+    private void startUrlMediaPlayer() {
+        //防止重复一直调用start
+        if (!mIsStart) {
+            return;
+        }
+        mIsStart = false;
+        mUrlMediaPlayer.start();
+        setPosition(mUrlMediaPlayer, mPbUrlMusic);
+    }
+
+    /**
+     * 重置网络歌曲的播放状态
+     */
+    private void resetUrlMediaPlayer() {
+        mIsStart = true;
+        mUrlMediaPlayer.reset();
+        try {
+            mUrlMediaPlayer.setDataSource("http://fm111.img.xiaonei.com/tribe/20070613/10/52/A314269027058MUS.mp3");
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
     /**
      * 设定音乐进度
      */
-    private void setPosition() {
+    private void setPosition(final MediaPlayer mediaPlayer, final ProgressBar progressBar) {
         new Thread(new Runnable() {
             @Override
             public void run() {
                 while (true) {
                     //得到歌曲的时间
-                    final int songTime = mMediaPlayer.getDuration();
+                    final int songTime = mediaPlayer.getDuration();
                     //得到当前的播放位置
-                    final int currentPosition = mMediaPlayer.getCurrentPosition();
+                    final int currentPosition = mediaPlayer.getCurrentPosition();
                     //如果播完了就不再运行线程
                     if (songTime == currentPosition) {
                         return;
@@ -226,7 +352,7 @@ public class MainActivity extends AppCompatActivity {
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    mPbMusic.setProgress(progress);
+                                    progressBar.setProgress(progress);
                                 }
                             });
                         }
