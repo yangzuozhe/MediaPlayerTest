@@ -26,13 +26,6 @@
         android:layout_height="wrap_content"
         android:text="本地长音乐" />
 
-    <ProgressBar
-        android:id="@+id/pbUrlMusic"
-        style="@style/Widget.AppCompat.ProgressBar.Horizontal"
-        android:layout_width="match_parent"
-        android:layout_height="5dp"
-        android:background="@android:color/holo_red_light" />
-
     <Button
         android:id="@+id/btn3"
         android:layout_width="wrap_content"
