@@ -197,9 +197,9 @@ public class MainActivity extends AppCompatActivity {
         //Android studio 中的音乐文件
 //        setLocalMusic();
         //网络资源文件
-//        setUrlMusic();
+        setUrlMusic();
         //手机存储文件
-        setStorageMusic();
+//        setStorageMusic();
         //首先准备一个 AudioAttributes 实例
         AudioAttributes attributes;
         //AudioAttributes 音频属性取代了 AudioManager 音频流
